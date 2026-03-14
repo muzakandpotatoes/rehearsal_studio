@@ -106,6 +106,7 @@
     min-width: 18px;
   }
   .sp-desc { color: #607d8b; font-size: 10px; }
+  .sp-key.active { background: #1b5e20; color: #a5d6a7; border-color: #2e7d32; }
 
   .device-select {
     background: #1a1a1a;
@@ -226,15 +227,15 @@
     </div>
     <div class="sp-section">
       <div class="sp-title">Modes</div>
-      <div class="sp-row"><span class="sp-key">O</span><span class="sp-desc">overdub</span></div>
-      <div class="sp-row"><span class="sp-key">L</span><span class="sp-desc">loop region</span></div>
-      <div class="sp-row"><span class="sp-key">F</span><span class="sp-desc">monitor input</span></div>
+      <div class="sp-row"><span class="sp-key" id="sp-o">O</span><span class="sp-desc">overdub</span></div>
+      <div class="sp-row"><span class="sp-key" id="sp-l">L</span><span class="sp-desc">loop region</span></div>
+      <div class="sp-row"><span class="sp-key" id="sp-f">F</span><span class="sp-desc">monitor input</span></div>
+      <div class="sp-row"><span class="sp-key" id="sp-r">R</span><span class="sp-desc">record clicks</span></div>
     </div>
     <div class="sp-section">
       <div class="sp-title">Metronome</div>
-      <div class="sp-row"><span class="sp-key">G</span><span class="sp-desc">toggle</span></div>
+      <div class="sp-row"><span class="sp-key" id="sp-g">G</span><span class="sp-desc">toggle</span></div>
       <div class="sp-row"><span class="sp-key">T</span><span class="sp-desc">set BPM</span></div>
-      <div class="sp-row"><span class="sp-key">R</span><span class="sp-desc">record clicks</span></div>
     </div>
     <div class="sp-section">
       <div class="sp-title">View</div>
@@ -410,7 +411,13 @@ async function startRecording() {
 
     const blob = new Blob([workletSource], { type: 'application/javascript' });
     const blobUrl = URL.createObjectURL(blob);
-    await audio.ctx.audioWorklet.addModule(blobUrl);
+    try {
+      await audio.ctx.audioWorklet.addModule(blobUrl);
+    } catch (workletErr) {
+      // Some browsers block blob: URLs for worklets; fall back to data: URI
+      const dataUrl = 'data:application/javascript;charset=utf-8,' + encodeURIComponent(workletSource);
+      await audio.ctx.audioWorklet.addModule(dataUrl);
+    }
     URL.revokeObjectURL(blobUrl);
 
     audio.micSource = audio.ctx.createMediaStreamSource(stream);
@@ -1100,6 +1107,12 @@ function updateStatusBar() {
     recDot.style.opacity = '';
     recDot.style.background = '#ef5350';
   }
+
+  document.getElementById('sp-o').classList.toggle('active', modes.overdub);
+  document.getElementById('sp-l').classList.toggle('active', modes.loop);
+  document.getElementById('sp-f').classList.toggle('active', modes.monitor);
+  document.getElementById('sp-g').classList.toggle('active', met.on);
+  document.getElementById('sp-r').classList.toggle('active', met.recEnabled);
 }
 
 // ─── Render loop ─────────────────────────────────────────────────────────────
@@ -1247,6 +1260,10 @@ document.addEventListener('keydown', (e) => {
     case 'O':
       e.preventDefault();
       modes.overdub = !modes.overdub;
+      if (pb.playing && pb.source && audio.workletNode) {
+        if (modes.overdub) pb.source.connect(audio.workletNode);
+        else pb.source.disconnect(audio.workletNode);
+      }
       break;
 
     case 'l':
