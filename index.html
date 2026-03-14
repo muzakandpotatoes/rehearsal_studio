@@ -48,9 +48,16 @@
   #time-display { color: #80cbc4; margin-left: auto; letter-spacing: 0.08em; }
   #cursor-time-display { color: #fff59d; letter-spacing: 0.06em; }
 
+  #main-area {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
   #waveform-container {
     flex: 1;
     position: relative;
+    min-width: 0;
   }
 
   #waveform-canvas {
@@ -59,28 +66,60 @@
     height: 100%;
   }
 
-  #shortcut-bar {
-    background: #263238;
-    border-top: 1px solid #37474f;
-    padding: 5px 14px;
-    display: flex;
-    gap: 20px;
+  #shortcut-panel {
+    width: 170px;
+    background: #1e272c;
+    border-left: 1px solid #37474f;
+    padding: 10px 12px;
     flex-shrink: 0;
-    height: 28px;
-    align-items: center;
-    color: #546e7a;
+    overflow-y: auto;
     font-size: 11px;
+    color: #546e7a;
   }
 
-  .shortcut-item { display: flex; gap: 5px; align-items: center; }
-  .key {
+  .sp-section { margin-bottom: 10px; }
+  .sp-title {
+    color: #78909c;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+    border-bottom: 1px solid #263238;
+    padding-bottom: 2px;
+  }
+  .sp-row {
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+    padding: 1px 0;
+    line-height: 1.5;
+  }
+  .sp-key {
     background: #37474f;
     color: #b0bec5;
     border-radius: 3px;
-    padding: 1px 5px;
-    font-size: 10px;
-    border: 1px solid #546e7a;
+    padding: 0px 4px;
+    font-size: 9px;
+    border: 1px solid #455a64;
+    flex-shrink: 0;
+    text-align: center;
+    min-width: 18px;
   }
+  .sp-desc { color: #607d8b; font-size: 10px; }
+
+  .device-select {
+    background: #1a1a1a;
+    color: #b0bec5;
+    border: 1px solid #37474f;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 10px;
+    padding: 1px 4px;
+    max-width: 140px;
+    height: 20px;
+    outline: none;
+  }
+  .device-select:focus { border-color: #546e7a; }
 
   #init-overlay {
     position: absolute;
@@ -117,6 +156,27 @@
   }
   #live-indicator.live { background: #1b5e20; color: #a5d6a7; }
   #live-indicator.scrolled { background: #37474f; color: #78909c; }
+
+  #met-display {
+    color: #546e7a;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    letter-spacing: 0.05em;
+    cursor: default;
+  }
+  #bpm-input {
+    display: none;
+    background: #1a1a1a;
+    color: #80cbc4;
+    border: 1px solid #546e7a;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    padding: 1px 5px;
+    width: 50px;
+    outline: none;
+  }
 </style>
 </head>
 <body>
@@ -127,63 +187,90 @@
   <span id="live-indicator" class="live">LIVE</span>
   <span id="cursor-time-display"></span>
   <span id="row-duration-display" style="color:#90a4ae; font-size:11px;"></span>
+  <select id="input-device" class="device-select" title="Input device"></select>
+  <select id="output-device" class="device-select" title="Output device"></select>
+  <span id="met-display">MET 120</span>
+  <input id="bpm-input" type="text" inputmode="numeric">
   <span id="time-display">00:00:00</span>
 </div>
 
-<div id="waveform-container">
-  <canvas id="waveform-canvas"></canvas>
-  <div id="init-overlay">
-    <p>Click to start recording from microphone</p>
-    <button id="start-btn">Start Recording</button>
+<div id="main-area">
+  <div id="waveform-container">
+    <canvas id="waveform-canvas"></canvas>
+    <div id="init-overlay">
+      <p>Click to start recording from microphone</p>
+      <button id="start-btn">Start Recording</button>
+    </div>
   </div>
-</div>
 
-<div id="shortcut-bar">
-  <div class="shortcut-item"><span class="key">Space</span> play / stop</div>
-  <div class="shortcut-item"><span class="key">M</span> toggle marker</div>
-  <div class="shortcut-item"><span class="key">1-9,A-Z</span> jump to marker</div>
-  <div class="shortcut-item"><span class="key">-/=</span> row duration</div>
-  <div class="shortcut-item"><span class="key">Esc</span> back to live</div>
-  <div class="shortcut-item"><span class="key">Scroll</span> pan timeline</div>
-  <div class="shortcut-item"><span class="key">Click</span> set cursor / clear region</div>
-  <div class="shortcut-item"><span class="key">Drag</span> select region / move marker</div>
-  <div class="shortcut-item"><span class="key">O</span> overdub</div>
-  <div class="shortcut-item"><span class="key">L</span> loop region</div>
-  <div class="shortcut-item"><span class="key">P</span> pause rec</div>
-  <div class="shortcut-item"><span class="key">Tab</span> cycle target</div>
-  <div class="shortcut-item"><span class="key">,/.</span> nudge</div>
+  <div id="shortcut-panel">
+    <div class="sp-section">
+      <div class="sp-title">Transport</div>
+      <div class="sp-row"><span class="sp-key">Space</span><span class="sp-desc">play / stop</span></div>
+      <div class="sp-row"><span class="sp-key">P</span><span class="sp-desc">pause recording</span></div>
+      <div class="sp-row"><span class="sp-key">Esc</span><span class="sp-desc">back to live</span></div>
+    </div>
+    <div class="sp-section">
+      <div class="sp-title">Selection</div>
+      <div class="sp-row"><span class="sp-key">Click</span><span class="sp-desc">set cursor</span></div>
+      <div class="sp-row"><span class="sp-key">Drag</span><span class="sp-desc">select region</span></div>
+      <div class="sp-row"><span class="sp-key">Tab</span><span class="sp-desc">cycle target</span></div>
+      <div class="sp-row"><span class="sp-key">, .</span><span class="sp-desc">nudge &plusmn;0.1s</span></div>
+      <div class="sp-row"><span class="sp-key">&lt; &gt;</span><span class="sp-desc">nudge &plusmn;1s</span></div>
+    </div>
+    <div class="sp-section">
+      <div class="sp-title">Markers</div>
+      <div class="sp-row"><span class="sp-key">M</span><span class="sp-desc">toggle marker</span></div>
+      <div class="sp-row"><span class="sp-key">1-9</span><span class="sp-desc">jump to marker</span></div>
+      <div class="sp-row"><span class="sp-key">A-Z</span><span class="sp-desc">jump to marker</span></div>
+    </div>
+    <div class="sp-section">
+      <div class="sp-title">Modes</div>
+      <div class="sp-row"><span class="sp-key">O</span><span class="sp-desc">overdub</span></div>
+      <div class="sp-row"><span class="sp-key">L</span><span class="sp-desc">loop region</span></div>
+      <div class="sp-row"><span class="sp-key">F</span><span class="sp-desc">monitor input</span></div>
+    </div>
+    <div class="sp-section">
+      <div class="sp-title">Metronome</div>
+      <div class="sp-row"><span class="sp-key">G</span><span class="sp-desc">toggle</span></div>
+      <div class="sp-row"><span class="sp-key">T</span><span class="sp-desc">set BPM</span></div>
+      <div class="sp-row"><span class="sp-key">R</span><span class="sp-desc">record clicks</span></div>
+    </div>
+    <div class="sp-section">
+      <div class="sp-title">View</div>
+      <div class="sp-row"><span class="sp-key">- =</span><span class="sp-desc">row &plusmn;10s</span></div>
+      <div class="sp-row"><span class="sp-key">_ +</span><span class="sp-desc">row &plusmn;60s</span></div>
+      <div class="sp-row"><span class="sp-key">Scroll</span><span class="sp-desc">pan timeline</span></div>
+    </div>
+  </div>
 </div>
 
 <script>
 'use strict';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
-const FINE_SAMPLES_PER_PEAK = 256;  // internal peak storage resolution (unchanged)
-const TARGET_VISIBLE_ROWS = 7;      // ~5 content rows + 2 blank rows on screen
-const MIN_BLANK_ROWS_BELOW = 2;     // always keep 2 blank rows below active row
+const FINE_SAMPLES_PER_PEAK = 256;
+const TARGET_VISIBLE_ROWS = 7;
+const MIN_BLANK_ROWS_BELOW = 2;
 const MARKER_FLAG_W = 22;
 const MARKER_FLAG_H = 14;
-const ROW_MARKER_ZONE = 16;         // px at top of each row for marker flags
-const ROW_TIME_ZONE = 14;           // px at bottom of each row for time labels
-const TIME_LABEL_MIN_PX = 120;      // min px between time labels
+const ROW_MARKER_ZONE = 16;
+const ROW_TIME_ZONE = 14;
+const TIME_LABEL_MIN_PX = 120;
+const CONSOLIDATE_INTERVAL_MS = 30000;
 
-// Keys reserved for hotkeys — extend this set as new hotkeys are added
-const RESERVED_KEYS = new Set(['M', 'O', 'L', 'P']);
+const RESERVED_KEYS = new Set(['M', 'O', 'L', 'P', 'T', 'G', 'R', 'F']);
 
-// Marker key sequence: 1-9, then A-Z (skipping reserved)
 const MARKER_KEYS = [];
 for (let i = 1; i <= 9; i++) MARKER_KEYS.push(String(i));
 for (let c = 65; c <= 90; c++) {
   const ch = String.fromCharCode(c);
   if (!RESERVED_KEYS.has(ch)) MARKER_KEYS.push(ch);
 }
-// Total: 9 + 22 = 31 markers max
 
-// Row duration bounds
-const ROW_DURATION_MIN = 10;    // seconds
-const ROW_DURATION_MAX = 3600;  // seconds (1 hour)
+const ROW_DURATION_MIN = 10;
+const ROW_DURATION_MAX = 3600;
 
-// Colors
 const COLOR_BG_DEFAULT  = '#1e3a1e';
 const COLOR_BG_PLAYBACK = '#3a3700';
 const COLOR_WAVE        = '#4caf50';
@@ -194,87 +281,93 @@ const COLOR_TIME_LABEL  = '#546e7a';
 const COLOR_CANVAS_BG   = '#121212';
 const COLOR_ZERO_LINE   = '#263238';
 
-// ─── Mutable config ───────────────────────────────────────────────────────────
-let secondsPerRow = 60;  // 1 minute per row (adjustable with -/=)
-
 // ─── State ───────────────────────────────────────────────────────────────────
-let audioCtx = null;
-let sampleRate = 44100;
 
-// Audio storage
-let rawChunks = [];        // Float32Array[]
-let peaks = [];            // {min, max}[]
-let totalSamples = 0;
-let peakAccMin = Infinity;
-let peakAccMax = -Infinity;
-let peakAccCount = 0;
+const audio = {
+  ctx: null,
+  sampleRate: 44100,
+  stream: null,
+  workletNode: null,
+  micSource: null,
+  monitorGain: null,
+};
 
-// Playback
-let sourceNode = null;
-let isPlaying = false;
-let mediaStream = null;
-let rafId = null;
-let playbackStartSample = 0;      // cursor position when play started (for advancing cursor)
-let playbackStartCtxTime = 0;     // audioCtx.currentTime when play started
+const rec = {
+  chunks: [],
+  peaks: [],
+  totalSamples: 0,
+  peakAccMin: Infinity,
+  peakAccMax: -Infinity,
+  peakAccCount: 0,
+  paused: false,
+  consolidateTimer: null,
+};
 
-// NEW: track recording head position at play start/stop for yellow coloring
-let recDuringPlaybackStart = 0;   // totalSamples when playback started
+const pb = {
+  source: null,
+  playing: false,
+  startSample: 0,
+  startCtxTime: 0,
+  recAtStart: 0,
+  intervals: [],
+  regionStart: 0,
+  regionEnd: 0,
+};
 
-let playbackIntervals = [];       // {start, end} — sample indices of RECORDED audio during playback
+const view = {
+  cursor: 0,
+  isLive: true,
+  topRow: 0,
+  secondsPerRow: 60,
+  samplesPerRow: 0,
+  samplesPerPeak: 0,
+  rowHeight: 0,
+  visibleRows: TARGET_VISIBLE_ROWS,
+  w: 0,
+  h: 0,
+  dpr: window.devicePixelRatio || 1,
+};
 
-// View
-let cursorSample = 0;
-let isLive = true;
-let viewTopRow = 0;               // first visible row index
+const sel = {
+  region: null,
+  mouseDown: null,
+  mouseTarget: null,
+  dragging: false,
+  boundaryDragSide: null,
+};
 
-// Computed on resize
-let samplesPerRow = 0;            // SECONDS_PER_ROW * sampleRate
-let samplesPerPeak = 0;           // samplesPerRow / canvasW (display resolution per pixel column)
-let rowHeight = 0;                // canvasH / TARGET_VISIBLE_ROWS
-let visibleRows = TARGET_VISIBLE_ROWS;
+const mkr = {
+  list: [],
+  draggingIdx: -1,
+  isDragging: false,
+};
 
-// Marker dragging
-let draggingMarkerIdx = -1;       // index into markers[] or -1
-let isDragging = false;
+const met = {
+  on: false,
+  bpm: 120,
+  intervalId: null,
+  nextBeatTime: 0,
+  recEnabled: false,
+  editing: false,
+};
 
-// Markers: {sample, key}
-let markers = [];
+const modes = {
+  overdub: false,
+  loop: false,
+  monitor: false,
+};
 
-// Overdub
-let overdubEnabled = false;
-let recorderWorkletNode = null;
+const nudge = {
+  target: { type: 'cursor' },
+  shiftTabAnchor: null,
+};
 
-// Region selection
-let selectionRegion = null;       // {start, end} in samples, start < end; or null
-let mouseDownPos = null;          // {x, y, sample} on mousedown
-let mouseDownTarget = null;       // 'marker' | 'regionBoundary' | 'canvas'
-let mouseDragActive = false;
-let regionBoundaryDragSide = null; // 'start' | 'end'
-
-// Nudge target
-let activeNudgeTarget = { type: 'cursor' };
-// Values: {type:'cursor'}, {type:'marker', index:N}, {type:'regionStart'}, {type:'regionEnd'}
-
-// Loop
-let loopEnabled = false;
-
-// Playback region tracking (for live region updates during playback)
-let playbackRegionStart = 0;
-let playbackRegionEnd = 0;
-
-// Recording pause
-let recordingPaused = false;
-
-// Tab cycling anchor
-let shiftTabAnchor = null;
-
-// Canvas
+// ─── DOM refs ────────────────────────────────────────────────────────────────
 const canvas = document.getElementById('waveform-canvas');
 const ctx = canvas.getContext('2d');
-let canvasW = 0, canvasH = 0;
-let dpr = window.devicePixelRatio || 1;
+let rafId = null;
 
-// ─── AudioWorklet processor source (loaded via Blob URL) ─────────────────────
+// ─── AudioWorklet processor source ───────────────────────────────────────────
 const workletSource = `
 class RecorderProcessor extends AudioWorkletProcessor {
   constructor() {
@@ -284,7 +377,6 @@ class RecorderProcessor extends AudioWorkletProcessor {
   process(inputs) {
     const input = inputs[0];
     if (input && input[0]) {
-      // Copy to avoid neutered ArrayBuffer issues
       const chunk = new Float32Array(input[0]);
       this.port.postMessage(chunk, [chunk.buffer]);
     }
@@ -294,53 +386,74 @@ class RecorderProcessor extends AudioWorkletProcessor {
 registerProcessor('recorder-processor', RecorderProcessor);
 `;
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
+// ─── Init ────────────────────────────────────────────────────────────────────
 document.getElementById('start-btn').addEventListener('click', startRecording);
 
 async function startRecording() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { channelCount: 1, sampleRate: 44100, echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-    });
-    mediaStream = stream;
+    const inputDeviceId = document.getElementById('input-device').value;
+    const audioConstraints = {
+      channelCount: 1, sampleRate: 44100,
+      echoCancellation: false, noiseSuppression: false, autoGainControl: false
+    };
+    if (inputDeviceId) audioConstraints.deviceId = { exact: inputDeviceId };
 
-    audioCtx = new AudioContext({ sampleRate: 44100 });
-    sampleRate = audioCtx.sampleRate;
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+    audio.stream = stream;
 
-    // Load worklet
+    const outputDeviceId = document.getElementById('output-device').value;
+    const ctxOptions = { sampleRate: 44100 };
+    if (outputDeviceId) ctxOptions.sinkId = outputDeviceId;
+
+    audio.ctx = new AudioContext(ctxOptions);
+    audio.sampleRate = audio.ctx.sampleRate;
+
     const blob = new Blob([workletSource], { type: 'application/javascript' });
     const blobUrl = URL.createObjectURL(blob);
-    await audioCtx.audioWorklet.addModule(blobUrl);
+    await audio.ctx.audioWorklet.addModule(blobUrl);
     URL.revokeObjectURL(blobUrl);
 
-    const micSource = audioCtx.createMediaStreamSource(stream);
-    recorderWorkletNode = new AudioWorkletNode(audioCtx, 'recorder-processor');
+    audio.micSource = audio.ctx.createMediaStreamSource(stream);
+    audio.workletNode = new AudioWorkletNode(audio.ctx, 'recorder-processor');
 
-    recorderWorkletNode.port.onmessage = (e) => {
-      if (recordingPaused) return; // discard chunk when paused
-      const chunk = e.data; // Float32Array
-      rawChunks.push(chunk);
+    audio.monitorGain = audio.ctx.createGain();
+    audio.monitorGain.gain.value = modes.monitor ? 1 : 0;
+    audio.micSource.connect(audio.monitorGain);
+    audio.monitorGain.connect(audio.ctx.destination);
 
-      // Compute peaks from this chunk
+    audio.workletNode.port.onmessage = (e) => {
+      if (rec.paused) return;
+      const chunk = e.data;
+      rec.chunks.push(chunk);
+
       for (let i = 0; i < chunk.length; i++) {
         const s = chunk[i];
-        if (s < peakAccMin) peakAccMin = s;
-        if (s > peakAccMax) peakAccMax = s;
-        peakAccCount++;
-        if (peakAccCount >= FINE_SAMPLES_PER_PEAK) {
-          peaks.push({ min: peakAccMin, max: peakAccMax });
-          peakAccMin = Infinity;
-          peakAccMax = -Infinity;
-          peakAccCount = 0;
+        if (s < rec.peakAccMin) rec.peakAccMin = s;
+        if (s > rec.peakAccMax) rec.peakAccMax = s;
+        rec.peakAccCount++;
+        if (rec.peakAccCount >= FINE_SAMPLES_PER_PEAK) {
+          rec.peaks.push({ min: rec.peakAccMin, max: rec.peakAccMax });
+          rec.peakAccMin = Infinity;
+          rec.peakAccMax = -Infinity;
+          rec.peakAccCount = 0;
         }
       }
-      totalSamples += chunk.length;
+      rec.totalSamples += chunk.length;
     };
 
-    micSource.connect(recorderWorkletNode);
-    // Don't connect worklet to destination — we don't want mic monitoring
+    audio.micSource.connect(audio.workletNode);
 
     document.getElementById('init-overlay').style.display = 'none';
+
+    await populateDevices();
+
+    const activeTrack = stream.getAudioTracks()[0];
+    const activeSettings = activeTrack && activeTrack.getSettings();
+    if (activeSettings && activeSettings.deviceId) {
+      document.getElementById('input-device').value = activeSettings.deviceId;
+    }
+
+    rec.consolidateTimer = setInterval(consolidateChunks, CONSOLIDATE_INTERVAL_MS);
 
     rafId = requestAnimationFrame(renderLoop);
   } catch (err) {
@@ -348,7 +461,90 @@ async function startRecording() {
   }
 }
 
-// ─── Flatten rawChunks into a single Float32Array from startSample ─────────────
+// ─── Device management ───────────────────────────────────────────────────────
+async function populateDevices() {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const inputSelect = document.getElementById('input-device');
+    const outputSelect = document.getElementById('output-device');
+
+    const currentInput = inputSelect.value;
+    const currentOutput = outputSelect.value;
+
+    inputSelect.innerHTML = '';
+    outputSelect.innerHTML = '';
+
+    const inputs = devices.filter(d => d.kind === 'audioinput');
+    const outputs = devices.filter(d => d.kind === 'audiooutput');
+
+    inputs.forEach((d, i) => {
+      const opt = document.createElement('option');
+      opt.value = d.deviceId;
+      opt.textContent = d.label || `Mic ${i + 1}`;
+      inputSelect.appendChild(opt);
+    });
+
+    outputs.forEach((d, i) => {
+      const opt = document.createElement('option');
+      opt.value = d.deviceId;
+      opt.textContent = d.label || `Speaker ${i + 1}`;
+      outputSelect.appendChild(opt);
+    });
+
+    if (currentInput && inputs.some(d => d.deviceId === currentInput)) {
+      inputSelect.value = currentInput;
+    }
+    if (currentOutput && outputs.some(d => d.deviceId === currentOutput)) {
+      outputSelect.value = currentOutput;
+    }
+  } catch (e) { /* ignore */ }
+}
+
+async function switchInputDevice(deviceId) {
+  if (!audio.ctx || !audio.workletNode) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        deviceId: { exact: deviceId },
+        channelCount: 1, sampleRate: 44100,
+        echoCancellation: false, noiseSuppression: false, autoGainControl: false
+      }
+    });
+
+    audio.micSource.disconnect();
+    if (audio.stream) audio.stream.getTracks().forEach(t => t.stop());
+
+    audio.stream = stream;
+    audio.micSource = audio.ctx.createMediaStreamSource(stream);
+    audio.micSource.connect(audio.workletNode);
+    audio.micSource.connect(audio.monitorGain);
+  } catch (err) {
+    alert('Failed to switch mic: ' + err.message);
+  }
+}
+
+async function switchOutputDevice(deviceId) {
+  if (!audio.ctx) return;
+  try {
+    await audio.ctx.setSinkId(deviceId);
+  } catch (err) {
+    alert('Failed to switch output: ' + err.message);
+  }
+}
+
+document.getElementById('input-device').addEventListener('change', (e) => {
+  e.target.blur();
+  if (audio.ctx) switchInputDevice(e.target.value);
+});
+document.getElementById('output-device').addEventListener('change', (e) => {
+  e.target.blur();
+  if (audio.ctx) switchOutputDevice(e.target.value);
+});
+
+navigator.mediaDevices.addEventListener('devicechange', populateDevices);
+populateDevices();
+
+// ─── Audio helpers ───────────────────────────────────────────────────────────
 function getAudioSlice(startSample, endSample) {
   const length = endSample - startSample;
   if (length <= 0) return new Float32Array(0);
@@ -357,7 +553,7 @@ function getAudioSlice(startSample, endSample) {
   let outPos = 0;
   let chunkStart = 0;
 
-  for (const chunk of rawChunks) {
+  for (const chunk of rec.chunks) {
     const chunkEnd = chunkStart + chunk.length;
     if (chunkEnd <= startSample) { chunkStart = chunkEnd; continue; }
     if (chunkStart >= endSample) break;
@@ -371,485 +567,531 @@ function getAudioSlice(startSample, endSample) {
   return out;
 }
 
-// ─── Playback ─────────────────────────────────────────────────────────────────
+function consolidateChunks() {
+  if (rec.chunks.length <= 1) return;
+  const merged = new Float32Array(rec.totalSamples);
+  let offset = 0;
+  for (const chunk of rec.chunks) {
+    merged.set(chunk, offset);
+    offset += chunk.length;
+  }
+  rec.chunks = [merged];
+}
+
+// ─── Playback ────────────────────────────────────────────────────────────────
 function startPlayback() {
-  if (!audioCtx || totalSamples === 0) return;
-  if (isPlaying) stopPlayback();
+  if (!audio.ctx || rec.totalSamples === 0) return;
+  if (pb.playing) stopPlayback();
 
   let startSample, endSample;
-  if (selectionRegion) {
-    startSample = Math.max(0, Math.min(selectionRegion.start, totalSamples - 1));
-    endSample = Math.min(selectionRegion.end, totalSamples);
-    cursorSample = startSample;
+  if (sel.region) {
+    startSample = Math.max(0, Math.min(sel.region.start, rec.totalSamples - 1));
+    endSample = Math.min(sel.region.end, rec.totalSamples);
+    view.cursor = startSample;
   } else {
-    startSample = Math.max(0, Math.min(cursorSample, totalSamples - 1));
-    endSample = totalSamples;
+    startSample = Math.max(0, Math.min(view.cursor, rec.totalSamples - 1));
+    endSample = rec.totalSamples;
   }
 
-  playbackRegionStart = startSample;
-  playbackRegionEnd = endSample;
+  pb.regionStart = startSample;
+  pb.regionEnd = endSample;
 
   const slice = getAudioSlice(startSample, endSample);
   if (slice.length === 0) return;
 
-  const audioBuffer = audioCtx.createBuffer(1, slice.length, sampleRate);
+  const audioBuffer = audio.ctx.createBuffer(1, slice.length, audio.sampleRate);
   audioBuffer.copyToChannel(slice, 0);
 
-  sourceNode = audioCtx.createBufferSource();
-  sourceNode.buffer = audioBuffer;
-  sourceNode.connect(audioCtx.destination);
+  pb.source = audio.ctx.createBufferSource();
+  pb.source.buffer = audioBuffer;
+  pb.source.connect(audio.ctx.destination);
 
-  if (overdubEnabled && recorderWorkletNode) {
-    sourceNode.connect(recorderWorkletNode);
+  if (modes.overdub && audio.workletNode) {
+    pb.source.connect(audio.workletNode);
   }
 
-  if (selectionRegion && loopEnabled) {
-    sourceNode.loop = true;
+  if (sel.region && modes.loop) {
+    pb.source.loop = true;
   }
 
-  playbackStartSample = startSample;           // for cursor tracking (unchanged)
-  playbackStartCtxTime = audioCtx.currentTime; // for cursor tracking (unchanged)
-  recDuringPlaybackStart = totalSamples;        // NEW: recording head at play start
-  isPlaying = true;
+  pb.startSample = startSample;
+  pb.startCtxTime = audio.ctx.currentTime;
+  pb.recAtStart = rec.totalSamples;
+  pb.playing = true;
 
-  sourceNode.onended = () => {
-    if (isPlaying) {
-      playbackIntervals.push({ start: recDuringPlaybackStart, end: totalSamples });
-      isPlaying = false;
-      sourceNode = null;
+  pb.source.onended = () => {
+    if (pb.playing) {
+      pb.intervals.push({ start: pb.recAtStart, end: rec.totalSamples });
+      pb.playing = false;
+      pb.source = null;
     }
   };
 
-  sourceNode.start();
+  pb.source.start();
 }
 
 function stopPlayback() {
-  if (!isPlaying || !sourceNode) return;
-  playbackIntervals.push({ start: recDuringPlaybackStart, end: totalSamples });
-  sourceNode.onended = null;
-  sourceNode.stop();
-  sourceNode = null;
-  isPlaying = false;
+  if (!pb.playing || !pb.source) return;
+  pb.intervals.push({ start: pb.recAtStart, end: rec.totalSamples });
+  pb.source.onended = null;
+  pb.source.stop();
+  pb.source = null;
+  pb.playing = false;
 }
 
 function cleanup() {
-  if (rafId) {
-    cancelAnimationFrame(rafId);
-    rafId = null;
-  }
-  if (isPlaying) stopPlayback();
-  if (audioCtx) {
-    audioCtx.close();
-    audioCtx = null;
-  }
-  if (mediaStream) {
-    mediaStream.getTracks().forEach(t => t.stop());
-    mediaStream = null;
+  if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  if (pb.playing) stopPlayback();
+  stopMetronome();
+  if (rec.consolidateTimer) { clearInterval(rec.consolidateTimer); rec.consolidateTimer = null; }
+  if (audio.ctx) { audio.ctx.close(); audio.ctx = null; }
+  if (audio.stream) {
+    audio.stream.getTracks().forEach(t => t.stop());
+    audio.stream = null;
   }
 }
 
-// ─── Live region playback: restart source when region changes during playback ──
+// ─── Metronome ───────────────────────────────────────────────────────────────
+function playClick(time) {
+  if (!audio.ctx) return;
+  const osc = audio.ctx.createOscillator();
+  const gain = audio.ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = 900;
+  gain.gain.setValueAtTime(0.6, time);
+  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+  osc.connect(gain);
+  gain.connect(audio.ctx.destination);
+  if (met.recEnabled && audio.workletNode) {
+    gain.connect(audio.workletNode);
+  }
+  osc.start(time);
+  osc.stop(time + 0.05);
+}
+
+function startMetronome() {
+  stopMetronome();
+  if (!audio.ctx) return;
+  const interval = 60 / met.bpm;
+  met.nextBeatTime = audio.ctx.currentTime;
+  met.intervalId = setInterval(() => {
+    const lookAhead = 0.1;
+    while (met.nextBeatTime < audio.ctx.currentTime + lookAhead) {
+      playClick(met.nextBeatTime);
+      met.nextBeatTime += interval;
+    }
+  }, 25);
+}
+
+function stopMetronome() {
+  if (met.intervalId !== null) {
+    clearInterval(met.intervalId);
+    met.intervalId = null;
+  }
+}
+
+function enterBpmEdit() {
+  met.editing = true;
+  const input = document.getElementById('bpm-input');
+  const display = document.getElementById('met-display');
+  display.style.display = 'none';
+  input.style.display = 'inline';
+  input.value = met.bpm;
+  input.select();
+  input.focus();
+}
+
+function exitBpmEdit(save) {
+  met.editing = false;
+  const input = document.getElementById('bpm-input');
+  const display = document.getElementById('met-display');
+  if (save) {
+    const val = parseInt(input.value, 10);
+    if (!isNaN(val)) {
+      met.bpm = Math.max(20, Math.min(300, val));
+      if (met.on) startMetronome();
+    }
+  }
+  input.style.display = 'none';
+  display.style.display = '';
+  document.body.focus();
+}
+
+// ─── Live region playback restart ────────────────────────────────────────────
 function restartPlaybackForRegionChange() {
-  if (!isPlaying || !selectionRegion) return;
+  if (!pb.playing || !sel.region) return;
 
-  const newStart = Math.max(0, Math.min(selectionRegion.start, totalSamples - 1));
-  const newEnd = Math.min(selectionRegion.end, totalSamples);
+  const newStart = Math.max(0, Math.min(sel.region.start, rec.totalSamples - 1));
+  const newEnd = Math.min(sel.region.end, rec.totalSamples);
 
-  if (newStart === playbackRegionStart && newEnd === playbackRegionEnd) return;
+  if (newStart === pb.regionStart && newEnd === pb.regionEnd) return;
 
-  // Compute current cursor position within old region
-  const elapsed = audioCtx.currentTime - playbackStartCtxTime;
-  const elapsedSamples = Math.round(elapsed * sampleRate);
+  const elapsed = audio.ctx.currentTime - pb.startCtxTime;
+  const elapsedSamples = Math.round(elapsed * audio.sampleRate);
   let currentSample;
-  if (loopEnabled) {
-    const oldRegionLen = playbackRegionEnd - playbackRegionStart;
-    currentSample = playbackRegionStart + (elapsedSamples % oldRegionLen);
+  if (modes.loop) {
+    const oldRegionLen = pb.regionEnd - pb.regionStart;
+    currentSample = pb.regionStart + (elapsedSamples % oldRegionLen);
   } else {
-    currentSample = Math.min(playbackRegionEnd, playbackStartSample + elapsedSamples);
+    currentSample = Math.min(pb.regionEnd, pb.startSample + elapsedSamples);
   }
 
-  // Non-loop: if cursor is already past new (shorter) end, stop
-  if (!loopEnabled && currentSample >= newEnd) {
+  if (!modes.loop && currentSample >= newEnd) {
     stopPlayback();
     return;
   }
 
-  // Tear down old source
-  sourceNode.onended = null;
-  sourceNode.stop();
-  sourceNode = null;
+  pb.source.onended = null;
+  pb.source.stop();
+  pb.source = null;
 
-  // Build new buffer
   const slice = getAudioSlice(newStart, newEnd);
-  if (slice.length === 0) { isPlaying = false; return; }
+  if (slice.length === 0) { pb.playing = false; return; }
 
-  const audioBuffer = audioCtx.createBuffer(1, slice.length, sampleRate);
+  const audioBuffer = audio.ctx.createBuffer(1, slice.length, audio.sampleRate);
   audioBuffer.copyToChannel(slice, 0);
 
-  sourceNode = audioCtx.createBufferSource();
-  sourceNode.buffer = audioBuffer;
-  sourceNode.connect(audioCtx.destination);
-  if (overdubEnabled && recorderWorkletNode) {
-    sourceNode.connect(recorderWorkletNode);
+  pb.source = audio.ctx.createBufferSource();
+  pb.source.buffer = audioBuffer;
+  pb.source.connect(audio.ctx.destination);
+  if (modes.overdub && audio.workletNode) {
+    pb.source.connect(audio.workletNode);
   }
-  if (loopEnabled) sourceNode.loop = true;
+  if (modes.loop) pb.source.loop = true;
 
-  // Compute offset within new buffer from current position
   const newRegionLen = newEnd - newStart;
-  const offsetSamples = loopEnabled
+  const offsetSamples = modes.loop
     ? ((currentSample - newStart) % newRegionLen + newRegionLen) % newRegionLen
     : Math.max(0, currentSample - newStart);
-  const offsetSecs = offsetSamples / sampleRate;
+  const offsetSecs = offsetSamples / audio.sampleRate;
 
-  playbackStartSample = newStart;
-  playbackStartCtxTime = audioCtx.currentTime - offsetSecs;
-  playbackRegionStart = newStart;
-  playbackRegionEnd = newEnd;
+  pb.startSample = newStart;
+  pb.startCtxTime = audio.ctx.currentTime - offsetSecs;
+  pb.regionStart = newStart;
+  pb.regionEnd = newEnd;
 
-  sourceNode.onended = () => {
-    if (isPlaying) {
-      playbackIntervals.push({ start: recDuringPlaybackStart, end: totalSamples });
-      isPlaying = false;
-      sourceNode = null;
+  pb.source.onended = () => {
+    if (pb.playing) {
+      pb.intervals.push({ start: pb.recAtStart, end: rec.totalSamples });
+      pb.playing = false;
+      pb.source = null;
     }
   };
 
-  sourceNode.start(0, offsetSecs);
+  pb.source.start(0, offsetSecs);
 }
 
-// ─── Live cursor position during playback ─────────────────────────────────────
+// ─── Live cursor position during playback ────────────────────────────────────
 function getEffectiveCursorSample() {
-  if (isPlaying) {
-    const elapsed = audioCtx.currentTime - playbackStartCtxTime;
-    const elapsedSamples = Math.round(elapsed * sampleRate);
-    if (selectionRegion && loopEnabled) {
-      const regionLen = playbackRegionEnd - playbackRegionStart;
-      return playbackRegionStart + (elapsedSamples % regionLen);
+  if (pb.playing) {
+    const elapsed = audio.ctx.currentTime - pb.startCtxTime;
+    const elapsedSamples = Math.round(elapsed * audio.sampleRate);
+    if (sel.region && modes.loop) {
+      const regionLen = pb.regionEnd - pb.regionStart;
+      return pb.regionStart + (elapsedSamples % regionLen);
     }
-    const clampMax = selectionRegion ? playbackRegionEnd : totalSamples;
-    return Math.min(clampMax, playbackStartSample + elapsedSamples);
+    const clampMax = sel.region ? pb.regionEnd : rec.totalSamples;
+    return Math.min(clampMax, pb.startSample + elapsedSamples);
   }
-  return cursorSample;
+  return view.cursor;
 }
 
-// ─── Canvas resize ────────────────────────────────────────────────────────────
+// ─── Canvas resize ───────────────────────────────────────────────────────────
 function resizeCanvas() {
-  dpr = window.devicePixelRatio || 1;
+  view.dpr = window.devicePixelRatio || 1;
   const rect = canvas.parentElement.getBoundingClientRect();
-  canvasW = rect.width;
-  canvasH = rect.height;
-  canvas.width = canvasW * dpr;
-  canvas.height = canvasH * dpr;
-  canvas.style.width = canvasW + 'px';
-  canvas.style.height = canvasH + 'px';
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);   // use setTransform instead of scale (safe on re-call)
+  view.w = rect.width;
+  view.h = rect.height;
+  canvas.width = view.w * view.dpr;
+  canvas.height = view.h * view.dpr;
+  canvas.style.width = view.w + 'px';
+  canvas.style.height = view.h + 'px';
+  ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
 
-  samplesPerRow = secondsPerRow * sampleRate;
-  samplesPerPeak = samplesPerRow / canvasW;    // ~5512 samples per display column
-  rowHeight = Math.floor(canvasH / TARGET_VISIBLE_ROWS);
-  visibleRows = TARGET_VISIBLE_ROWS;
+  view.samplesPerRow = view.secondsPerRow * audio.sampleRate;
+  view.samplesPerPeak = view.samplesPerRow / view.w;
+  view.rowHeight = Math.floor(view.h / TARGET_VISIBLE_ROWS);
+  view.visibleRows = TARGET_VISIBLE_ROWS;
 }
 
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 window.addEventListener('beforeunload', cleanup);
 
-// ─── Coordinate helpers ───────────────────────────────────────────────────────
-// Sample → {row, col} where col is pixel x position within that row
+// ─── Coordinate helpers ──────────────────────────────────────────────────────
 function sampleToRowCol(sample) {
-  const row = Math.floor(sample / samplesPerRow);
-  const col = (sample % samplesPerRow) / samplesPerPeak;  // fractional px
+  const row = Math.floor(sample / view.samplesPerRow);
+  const col = (sample % view.samplesPerRow) / view.samplesPerPeak;
   return { row, col };
 }
 
-// Sample → {x, y} canvas pixel position, or null if off-screen
 function sampleToXY(sample) {
   const { row, col } = sampleToRowCol(sample);
-  if (row < viewTopRow || row >= viewTopRow + visibleRows) return null;
+  if (row < view.topRow || row >= view.topRow + view.visibleRows) return null;
   const x = col;
-  const y = (row - viewTopRow) * rowHeight;
+  const y = (row - view.topRow) * view.rowHeight;
   return { x, y };
 }
 
-// Canvas pixel (x, y) → sample index
 function xyToSample(x, y) {
-  const row = viewTopRow + Math.floor(y / rowHeight);
-  const sample = row * samplesPerRow + x * samplesPerPeak;
-  return Math.max(0, Math.min(totalSamples, Math.round(sample)));
+  const row = view.topRow + Math.floor(y / view.rowHeight);
+  const sample = row * view.samplesPerRow + x * view.samplesPerPeak;
+  return Math.max(0, Math.min(rec.totalSamples, Math.round(sample)));
 }
 
-// Compute viewTopRow for live mode
 function computeLiveView() {
-  if (!isLive) return;
-  const activeRow = Math.floor(totalSamples / samplesPerRow);
-  // Position so activeRow is visible with MIN_BLANK_ROWS_BELOW blank rows below it
-  const desiredTopRow = Math.max(0, activeRow - (visibleRows - 1 - MIN_BLANK_ROWS_BELOW));
-  viewTopRow = desiredTopRow;
+  if (!view.isLive) return;
+  const activeRow = Math.floor(rec.totalSamples / view.samplesPerRow);
+  const desiredTopRow = Math.max(0, activeRow - (view.visibleRows - 1 - MIN_BLANK_ROWS_BELOW));
+  view.topRow = desiredTopRow;
 }
 
-// ─── Render loop ──────────────────────────────────────────────────────────────
-function renderLoop() {
-  rafId = requestAnimationFrame(renderLoop);
-  if (!audioCtx) return;
+// ─── Row geometry ────────────────────────────────────────────────────────────
+function getRowGeometry(ri) {
+  const row = view.topRow + ri;
+  const yRow = ri * view.rowHeight;
+  const rowStartSample = row * view.samplesPerRow;
+  const rowEndSample = rowStartSample + view.samplesPerRow;
+  const wTop = yRow + ROW_MARKER_ZONE;
+  const wBot = yRow + view.rowHeight - ROW_TIME_ZONE;
+  const wH = wBot - wTop;
+  const midY = wTop + wH / 2;
+  return { row, yRow, rowStartSample, rowEndSample, wTop, wBot, wH, midY };
+}
 
-  computeLiveView();
+// ─── Render sub-functions ────────────────────────────────────────────────────
+function drawRowBackground(g) {
+  ctx.fillStyle = COLOR_BG_DEFAULT;
+  ctx.fillRect(0, g.wTop, view.w, g.wH);
 
-  // Update cursor during playback
-  if (isPlaying) {
-    cursorSample = getEffectiveCursorSample();
-    if (selectionRegion) {
-      restartPlaybackForRegionChange();
-    }
-    if (!loopEnabled) {
-      const elapsed = audioCtx.currentTime - playbackStartCtxTime;
-      const elapsedSamples = Math.round(elapsed * sampleRate);
-      const endSample = selectionRegion ? playbackRegionEnd : totalSamples;
-      if (playbackStartSample + elapsedSamples >= endSample) {
-        stopPlayback();
-      }
+  ctx.fillStyle = COLOR_BG_PLAYBACK;
+  for (const iv of pb.intervals) {
+    const ivStart = Math.max(iv.start, g.rowStartSample);
+    const ivEnd = Math.min(iv.end, g.rowEndSample);
+    if (ivStart >= ivEnd) continue;
+    const x1 = (ivStart - g.rowStartSample) / view.samplesPerPeak;
+    const x2 = (ivEnd - g.rowStartSample) / view.samplesPerPeak;
+    ctx.fillRect(x1, g.wTop, x2 - x1, g.wH);
+  }
+
+  if (pb.playing) {
+    const ivStart = Math.max(pb.recAtStart, g.rowStartSample);
+    const ivEnd = Math.min(rec.totalSamples, g.rowEndSample);
+    if (ivStart < ivEnd) {
+      const x1 = (ivStart - g.rowStartSample) / view.samplesPerPeak;
+      const x2 = (ivEnd - g.rowStartSample) / view.samplesPerPeak;
+      ctx.fillRect(x1, g.wTop, x2 - x1, g.wH);
     }
   }
 
-  // Clear entire canvas
-  ctx.fillStyle = COLOR_CANVAS_BG;
-  ctx.fillRect(0, 0, canvasW, canvasH);
-
-  for (let ri = 0; ri < visibleRows; ri++) {
-    const row = viewTopRow + ri;
-    const yRow = ri * rowHeight;
-    const rowStartSample = row * samplesPerRow;
-    const rowEndSample = rowStartSample + samplesPerRow;
-
-    // Row zones
-    const mTop = yRow;                              // marker zone top
-    const wTop = yRow + ROW_MARKER_ZONE;            // waveform zone top
-    const wBot = yRow + rowHeight - ROW_TIME_ZONE;  // waveform zone bottom
-    const wH = wBot - wTop;
-    const midY = wTop + wH / 2;
-
-    // ── Default green background for waveform zone ──
-    ctx.fillStyle = COLOR_BG_DEFAULT;
-    ctx.fillRect(0, wTop, canvasW, wH);
-
-    // ── Yellow overlay for playback intervals ──
-    ctx.fillStyle = COLOR_BG_PLAYBACK;
-    for (const iv of playbackIntervals) {
-      // Clip interval to this row
-      const ivStart = Math.max(iv.start, rowStartSample);
-      const ivEnd = Math.min(iv.end, rowEndSample);
-      if (ivStart >= ivEnd) continue;
-      const x1 = (ivStart - rowStartSample) / samplesPerPeak;
-      const x2 = (ivEnd - rowStartSample) / samplesPerPeak;
-      ctx.fillRect(x1, wTop, x2 - x1, wH);
+  if (sel.region) {
+    const regStart = Math.max(sel.region.start, g.rowStartSample);
+    const regEnd = Math.min(sel.region.end, g.rowEndSample);
+    if (regStart < regEnd) {
+      const x1 = (regStart - g.rowStartSample) / view.samplesPerPeak;
+      const x2 = (regEnd - g.rowStartSample) / view.samplesPerPeak;
+      ctx.fillStyle = 'rgba(255, 167, 38, 0.12)';
+      ctx.fillRect(x1, g.wTop, x2 - x1, g.wH);
     }
-    // In-progress playback interval (live)
-    if (isPlaying) {
-      const ivStart = Math.max(recDuringPlaybackStart, rowStartSample);
-      const ivEnd = Math.min(totalSamples, rowEndSample);
-      if (ivStart < ivEnd) {
-        const x1 = (ivStart - rowStartSample) / samplesPerPeak;
-        const x2 = (ivEnd - rowStartSample) / samplesPerPeak;
-        ctx.fillRect(x1, wTop, x2 - x1, wH);
-      }
-    }
+  }
+}
 
-    // ── Region selection overlay ──
-    if (selectionRegion) {
-      const rowRegStart = Math.max(selectionRegion.start, rowStartSample);
-      const rowRegEnd = Math.min(selectionRegion.end, rowEndSample);
-      if (rowRegStart < rowRegEnd) {
-        const x1 = (rowRegStart - rowStartSample) / samplesPerPeak;
-        const x2 = (rowRegEnd - rowStartSample) / samplesPerPeak;
-        ctx.fillStyle = 'rgba(255, 167, 38, 0.12)';
-        ctx.fillRect(x1, wTop, x2 - x1, wH);
-      }
+function drawSelectionBoundaries(g) {
+  if (!sel.region) return;
 
-      // Start boundary line
-      const { row: regStartRow, col: regStartCol } = sampleToRowCol(selectionRegion.start);
-      if (regStartRow === row) {
-        ctx.strokeStyle = '#ffa726';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(regStartCol + 0.5, wTop);
-        ctx.lineTo(regStartCol + 0.5, wBot);
-        ctx.stroke();
-        if (activeNudgeTarget.type === 'regionStart') {
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(regStartCol + 0.5, wTop + 6, 3, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-
-      // End boundary line
-      const { row: regEndRow, col: regEndCol } = sampleToRowCol(selectionRegion.end);
-      if (regEndRow === row) {
-        ctx.strokeStyle = '#ffa726';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(regEndCol + 0.5, wTop);
-        ctx.lineTo(regEndCol + 0.5, wBot);
-        ctx.stroke();
-        if (activeNudgeTarget.type === 'regionEnd') {
-          ctx.fillStyle = '#ffffff';
-          ctx.beginPath();
-          ctx.arc(regEndCol + 0.5, wTop + 6, 3, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-    }
-
-    // ── Zero line ──
-    ctx.strokeStyle = COLOR_ZERO_LINE;
-    ctx.lineWidth = 1;
+  const { row: startRow, col: startCol } = sampleToRowCol(sel.region.start);
+  if (startRow === g.row) {
+    ctx.strokeStyle = '#ffa726';
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(0, midY);
-    ctx.lineTo(canvasW, midY);
+    ctx.moveTo(startCol + 0.5, g.wTop);
+    ctx.lineTo(startCol + 0.5, g.wBot);
     ctx.stroke();
-
-    // ── Waveform peaks ──
-    // Only draw if this row has any recorded audio
-    if (rowStartSample < totalSamples) {
-      ctx.strokeStyle = COLOR_WAVE;
-      ctx.lineWidth = 1;
-
-      for (let x = 0; x < canvasW; x++) {
-        const sampleStart = rowStartSample + x * samplesPerPeak;
-        if (sampleStart >= totalSamples) break;
-
-        // Map to fine peak indices
-        const fpStart = Math.floor(sampleStart / FINE_SAMPLES_PER_PEAK);
-        const fpEnd = Math.min(peaks.length - 1,
-                               Math.ceil((sampleStart + samplesPerPeak) / FINE_SAMPLES_PER_PEAK));
-        if (fpStart > peaks.length - 1) break;
-
-        // Aggregate fine peaks
-        let pMin = Infinity, pMax = -Infinity;
-        for (let fp = fpStart; fp <= fpEnd; fp++) {
-          if (peaks[fp].min < pMin) pMin = peaks[fp].min;
-          if (peaks[fp].max > pMax) pMax = peaks[fp].max;
-        }
-
-        const yMin = midY - pMax * (wH / 2) * 0.95;
-        const yMax = midY - pMin * (wH / 2) * 0.95;
-
-        ctx.beginPath();
-        ctx.moveTo(x + 0.5, yMin);
-        ctx.lineTo(x + 0.5, yMax);
-        ctx.stroke();
-      }
-    }
-
-    // ── Row separator ──
-    ctx.strokeStyle = '#1a1a1a';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, yRow + rowHeight - 0.5);
-    ctx.lineTo(canvasW, yRow + rowHeight - 0.5);
-    ctx.stroke();
-
-    // ── Time labels for this row ──
-    const rowStartTime = rowStartSample / sampleRate;
-    const rowDuration = secondsPerRow;
-    // Choose label spacing
-    const intervals = [1, 2, 5, 10, 15, 30, 60, 120];
-    const labelInterval = intervals.find(iv => (iv / rowDuration) * canvasW >= TIME_LABEL_MIN_PX) || 120;
-    const firstLabel = Math.ceil(rowStartTime / labelInterval) * labelInterval;
-
-    ctx.fillStyle = COLOR_TIME_LABEL;
-    ctx.font = '9px Courier New';
-    ctx.textBaseline = 'top';
-
-    for (let t = firstLabel; t < rowStartTime + rowDuration; t += labelInterval) {
-      const lx = ((t - rowStartTime) / rowDuration) * canvasW;
-      if (lx < 0 || lx > canvasW) continue;
-
-      ctx.strokeStyle = COLOR_TIME_LABEL;
-      ctx.lineWidth = 1;
+    if (nudge.target.type === 'regionStart') {
+      ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.moveTo(lx, wBot);
-      ctx.lineTo(lx, wBot + 3);
-      ctx.stroke();
-
-      ctx.textAlign = lx < 25 ? 'left' : lx > canvasW - 25 ? 'right' : 'center';
-      ctx.fillText(formatTime(t), lx, wBot + 3);
-    }
-
-    // ── Markers in this row ──
-    for (let i = 0; i < markers.length; i++) {
-      const m = markers[i];
-      const { row: mRow, col: mCol } = sampleToRowCol(m.sample);
-      if (mRow !== row) continue;
-
-      // Stem from flag down to waveform top
-      ctx.strokeStyle = COLOR_MARKER_FLAG;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(mCol + 0.5, wTop);
-      ctx.lineTo(mCol + 0.5, mTop + ROW_MARKER_ZONE - MARKER_FLAG_H);
-      ctx.stroke();
-
-      // Flag rectangle
-      const flagX = mCol;
-      const flagY = mTop + ROW_MARKER_ZONE - MARKER_FLAG_H;
-      ctx.fillStyle = COLOR_MARKER_FLAG;
-      ctx.beginPath();
-      ctx.roundRect(flagX, flagY, MARKER_FLAG_W, MARKER_FLAG_H, 2);
+      ctx.arc(startCol + 0.5, g.wTop + 6, 3, 0, Math.PI * 2);
       ctx.fill();
-
-      // Key label
-      ctx.fillStyle = COLOR_MARKER_TEXT;
-      ctx.font = 'bold 9px Courier New';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(String(m.key), flagX + MARKER_FLAG_W / 2, flagY + MARKER_FLAG_H / 2);
-
-      // White outline when this marker is the active nudge target
-      if (activeNudgeTarget.type === 'marker' && activeNudgeTarget.index === i) {
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.roundRect(flagX - 1, flagY - 1, MARKER_FLAG_W + 2, MARKER_FLAG_H + 2, 3);
-        ctx.stroke();
-      }
     }
+  }
 
-    // ── Cursor in this row ──
-    const { row: cRow, col: cCol } = sampleToRowCol(cursorSample);
-    if (cRow === row) {
-      ctx.strokeStyle = COLOR_CURSOR;
+  const { row: endRow, col: endCol } = sampleToRowCol(sel.region.end);
+  if (endRow === g.row) {
+    ctx.strokeStyle = '#ffa726';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(endCol + 0.5, g.wTop);
+    ctx.lineTo(endCol + 0.5, g.wBot);
+    ctx.stroke();
+    if (nudge.target.type === 'regionEnd') {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(endCol + 0.5, g.wTop + 6, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawWaveform(g) {
+  ctx.strokeStyle = COLOR_ZERO_LINE;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, g.midY);
+  ctx.lineTo(view.w, g.midY);
+  ctx.stroke();
+
+  if (g.rowStartSample < rec.totalSamples) {
+    ctx.strokeStyle = COLOR_WAVE;
+    ctx.lineWidth = 1;
+
+    for (let x = 0; x < view.w; x++) {
+      const sampleStart = g.rowStartSample + x * view.samplesPerPeak;
+      if (sampleStart >= rec.totalSamples) break;
+
+      const fpStart = Math.floor(sampleStart / FINE_SAMPLES_PER_PEAK);
+      const fpEnd = Math.min(rec.peaks.length - 1,
+                             Math.ceil((sampleStart + view.samplesPerPeak) / FINE_SAMPLES_PER_PEAK));
+      if (fpStart > rec.peaks.length - 1) break;
+
+      let pMin = Infinity, pMax = -Infinity;
+      for (let fp = fpStart; fp <= fpEnd; fp++) {
+        if (rec.peaks[fp].min < pMin) pMin = rec.peaks[fp].min;
+        if (rec.peaks[fp].max > pMax) pMax = rec.peaks[fp].max;
+      }
+
+      const yMin = g.midY - pMax * (g.wH / 2) * 0.95;
+      const yMax = g.midY - pMin * (g.wH / 2) * 0.95;
+
+      ctx.beginPath();
+      ctx.moveTo(x + 0.5, yMin);
+      ctx.lineTo(x + 0.5, yMax);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawRowSeparator(g) {
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, g.yRow + view.rowHeight - 0.5);
+  ctx.lineTo(view.w, g.yRow + view.rowHeight - 0.5);
+  ctx.stroke();
+}
+
+function drawTimeLabels(g) {
+  const rowStartTime = g.rowStartSample / audio.sampleRate;
+  const rowDuration = view.secondsPerRow;
+  const intervals = [1, 2, 5, 10, 15, 30, 60, 120];
+  const labelInterval = intervals.find(iv => (iv / rowDuration) * view.w >= TIME_LABEL_MIN_PX) || 120;
+  const firstLabel = Math.ceil(rowStartTime / labelInterval) * labelInterval;
+
+  ctx.fillStyle = COLOR_TIME_LABEL;
+  ctx.font = '9px Courier New';
+  ctx.textBaseline = 'top';
+
+  for (let t = firstLabel; t < rowStartTime + rowDuration; t += labelInterval) {
+    const lx = ((t - rowStartTime) / rowDuration) * view.w;
+    if (lx < 0 || lx > view.w) continue;
+
+    ctx.strokeStyle = COLOR_TIME_LABEL;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(lx, g.wBot);
+    ctx.lineTo(lx, g.wBot + 3);
+    ctx.stroke();
+
+    ctx.textAlign = lx < 25 ? 'left' : lx > view.w - 25 ? 'right' : 'center';
+    ctx.fillText(formatTime(t), lx, g.wBot + 3);
+  }
+}
+
+function drawRowMarkers(g) {
+  for (let i = 0; i < mkr.list.length; i++) {
+    const m = mkr.list[i];
+    const { row: mRow, col: mCol } = sampleToRowCol(m.sample);
+    if (mRow !== g.row) continue;
+
+    const mTop = g.yRow;
+
+    ctx.strokeStyle = COLOR_MARKER_FLAG;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(mCol + 0.5, g.wTop);
+    ctx.lineTo(mCol + 0.5, mTop + ROW_MARKER_ZONE - MARKER_FLAG_H);
+    ctx.stroke();
+
+    const flagX = mCol;
+    const flagY = mTop + ROW_MARKER_ZONE - MARKER_FLAG_H;
+    ctx.fillStyle = COLOR_MARKER_FLAG;
+    ctx.beginPath();
+    ctx.roundRect(flagX, flagY, MARKER_FLAG_W, MARKER_FLAG_H, 2);
+    ctx.fill();
+
+    ctx.fillStyle = COLOR_MARKER_TEXT;
+    ctx.font = 'bold 9px Courier New';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(m.key), flagX + MARKER_FLAG_W / 2, flagY + MARKER_FLAG_H / 2);
+
+    if (nudge.target.type === 'marker' && nudge.target.index === i) {
+      ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.moveTo(cCol + 0.5, wTop);
-      ctx.lineTo(cCol + 0.5, wBot);
+      ctx.roundRect(flagX - 1, flagY - 1, MARKER_FLAG_W + 2, MARKER_FLAG_H + 2, 3);
       ctx.stroke();
-      if (activeNudgeTarget.type === 'cursor') {
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(cCol + 0.5, wTop + 6, 3, 0, Math.PI * 2);
-        ctx.fill();
-      }
     }
   }
+}
 
-  // ── Status bar updates ──
-  document.getElementById('row-duration-display').textContent = 'row ' + formatTime(secondsPerRow);
-  document.getElementById('time-display').textContent = formatTime(totalSamples / sampleRate);
+function drawRowCursor(g) {
+  const { row: cRow, col: cCol } = sampleToRowCol(view.cursor);
+  if (cRow !== g.row) return;
+
+  ctx.strokeStyle = COLOR_CURSOR;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cCol + 0.5, g.wTop);
+  ctx.lineTo(cCol + 0.5, g.wBot);
+  ctx.stroke();
+
+  if (nudge.target.type === 'cursor') {
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(cCol + 0.5, g.wTop + 6, 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function updateStatusBar() {
+  document.getElementById('row-duration-display').textContent = 'row ' + formatTime(view.secondsPerRow);
+  document.getElementById('time-display').textContent = formatTime(rec.totalSamples / audio.sampleRate);
   document.getElementById('cursor-time-display').textContent =
-    (cursorSample > 0 || !isLive) ? '\u21a6 ' + formatTime(cursorSample / sampleRate) : '';
-  const liveEl = document.getElementById('live-indicator');
-  liveEl.textContent = isLive ? 'LIVE' : 'SCROLLED';
-  liveEl.style.background = isLive ? '#1b5e20' : '#37474f';
-  liveEl.style.color = isLive ? '#a5d6a7' : '#78909c';
+    (view.cursor > 0 || !view.isLive) ? '\u21a6 ' + formatTime(view.cursor / audio.sampleRate) : '';
 
-  // Status text: REC/PAUSED + optional OVD + LOOP
-  const statusParts = [recordingPaused ? 'PAUSED' : 'REC'];
-  if (overdubEnabled) statusParts.push('OVD');
-  if (loopEnabled) statusParts.push('LOOP');
-  document.getElementById('status-text').textContent = statusParts.join(' \u00b7 ');
-  document.getElementById('status-text').style.color = recordingPaused ? '#78909c' : '#ef9a9a';
+  const liveEl = document.getElementById('live-indicator');
+  liveEl.textContent = view.isLive ? 'LIVE' : 'SCROLLED';
+  liveEl.style.background = view.isLive ? '#1b5e20' : '#37474f';
+  liveEl.style.color = view.isLive ? '#a5d6a7' : '#78909c';
+
+  if (!met.editing) {
+    const metEl = document.getElementById('met-display');
+    metEl.textContent = 'MET ' + met.bpm;
+    metEl.style.color = met.on ? '#80cbc4' : '#546e7a';
+    metEl.style.background = met.recEnabled ? 'rgba(128,203,196,0.15)' : '';
+  }
+
+  const parts = [rec.paused ? 'PAUSED' : 'REC'];
+  if (modes.overdub) parts.push('OVD');
+  if (modes.monitor) parts.push('MON');
+  if (modes.loop) parts.push('LOOP');
+  if (met.on) parts.push('MET');
+  if (met.recEnabled) parts.push('REC\u25c6MET');
+  document.getElementById('status-text').textContent = parts.join(' \u00b7 ');
+  document.getElementById('status-text').style.color = rec.paused ? '#78909c' : '#ef9a9a';
+
   const recDot = document.getElementById('rec-dot');
-  if (recordingPaused) {
+  if (rec.paused) {
     recDot.style.animation = 'none';
     recDot.style.opacity = '0.3';
     recDot.style.background = '#78909c';
@@ -860,7 +1102,44 @@ function renderLoop() {
   }
 }
 
-// ─── Time formatting ──────────────────────────────────────────────────────────
+// ─── Render loop ─────────────────────────────────────────────────────────────
+function renderLoop() {
+  rafId = requestAnimationFrame(renderLoop);
+  if (!audio.ctx) return;
+
+  computeLiveView();
+
+  if (pb.playing) {
+    view.cursor = getEffectiveCursorSample();
+    if (sel.region) restartPlaybackForRegionChange();
+    if (!modes.loop) {
+      const elapsed = audio.ctx.currentTime - pb.startCtxTime;
+      const elapsedSamples = Math.round(elapsed * audio.sampleRate);
+      const endSample = sel.region ? pb.regionEnd : rec.totalSamples;
+      if (pb.startSample + elapsedSamples >= endSample) {
+        stopPlayback();
+      }
+    }
+  }
+
+  ctx.fillStyle = COLOR_CANVAS_BG;
+  ctx.fillRect(0, 0, view.w, view.h);
+
+  for (let ri = 0; ri < view.visibleRows; ri++) {
+    const g = getRowGeometry(ri);
+    drawRowBackground(g);
+    drawSelectionBoundaries(g);
+    drawWaveform(g);
+    drawRowSeparator(g);
+    drawTimeLabels(g);
+    drawRowMarkers(g);
+    drawRowCursor(g);
+  }
+
+  updateStatusBar();
+}
+
+// ─── Time formatting ─────────────────────────────────────────────────────────
 function formatTime(seconds) {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
@@ -871,61 +1150,61 @@ function formatTime(seconds) {
   return `${String(m).padStart(2,'0')}:${s.toFixed(1).padStart(4,'0')}`;
 }
 
-// ─── Row duration ─────────────────────────────────────────────────────────────
+// ─── Row duration ────────────────────────────────────────────────────────────
 function setRowDuration(newDuration) {
-  secondsPerRow = Math.max(ROW_DURATION_MIN, Math.min(ROW_DURATION_MAX, newDuration));
-  samplesPerRow = secondsPerRow * sampleRate;
-  samplesPerPeak = samplesPerRow / canvasW;
+  view.secondsPerRow = Math.max(ROW_DURATION_MIN, Math.min(ROW_DURATION_MAX, newDuration));
+  view.samplesPerRow = view.secondsPerRow * audio.sampleRate;
+  view.samplesPerPeak = view.samplesPerRow / view.w;
 }
 
-// ─── Nudge helpers ────────────────────────────────────────────────────────────
+// ─── Nudge helpers ───────────────────────────────────────────────────────────
 function ensureVisible(sample) {
   const { row } = sampleToRowCol(sample);
-  if (row < viewTopRow || row >= viewTopRow + visibleRows) {
-    viewTopRow = Math.max(0, row - Math.floor(visibleRows / 2));
-    isLive = false;
+  if (row < view.topRow || row >= view.topRow + view.visibleRows) {
+    view.topRow = Math.max(0, row - Math.floor(view.visibleRows / 2));
+    view.isLive = false;
   }
 }
 
-function nudge(deltaSamples) {
-  const t = activeNudgeTarget;
+function doNudge(deltaSamples) {
+  const t = nudge.target;
   if (t.type === 'cursor') {
-    cursorSample = Math.max(0, Math.min(totalSamples, cursorSample + deltaSamples));
-    isLive = false;
-    ensureVisible(cursorSample);
+    view.cursor = Math.max(0, Math.min(rec.totalSamples, view.cursor + deltaSamples));
+    view.isLive = false;
+    ensureVisible(view.cursor);
   } else if (t.type === 'marker') {
-    if (t.index < 0 || t.index >= markers.length) return;
-    const marker = markers[t.index];
-    marker.sample = Math.max(0, Math.min(totalSamples, marker.sample + deltaSamples));
-    markers.sort((a, b) => a.sample - b.sample);
-    markers.forEach((mk, i) => { mk.key = MARKER_KEYS[i]; });
-    activeNudgeTarget.index = markers.indexOf(marker);
+    if (t.index < 0 || t.index >= mkr.list.length) return;
+    const marker = mkr.list[t.index];
+    marker.sample = Math.max(0, Math.min(rec.totalSamples, marker.sample + deltaSamples));
+    mkr.list.sort((a, b) => a.sample - b.sample);
+    mkr.list.forEach((mk, i) => { mk.key = MARKER_KEYS[i]; });
+    nudge.target.index = mkr.list.indexOf(marker);
     ensureVisible(marker.sample);
   } else if (t.type === 'regionStart') {
-    if (!selectionRegion) return;
-    selectionRegion.start = Math.max(0, Math.min(selectionRegion.end - 1, selectionRegion.start + deltaSamples));
-    ensureVisible(selectionRegion.start);
+    if (!sel.region) return;
+    sel.region.start = Math.max(0, Math.min(sel.region.end - 1, sel.region.start + deltaSamples));
+    ensureVisible(sel.region.start);
   } else if (t.type === 'regionEnd') {
-    if (!selectionRegion) return;
-    selectionRegion.end = Math.max(selectionRegion.start + 1, Math.min(totalSamples, selectionRegion.end + deltaSamples));
-    ensureVisible(selectionRegion.end);
+    if (!sel.region) return;
+    sel.region.end = Math.max(sel.region.start + 1, Math.min(rec.totalSamples, sel.region.end + deltaSamples));
+    ensureVisible(sel.region.end);
   }
 }
 
-// ─── Tab cycling helpers ──────────────────────────────────────────────────────
+// ─── Tab cycling helpers ─────────────────────────────────────────────────────
 function getTabCycleItems() {
   const items = [];
-  markers.forEach((m, i) => items.push({ type: 'marker', index: i, sample: m.sample }));
-  if (selectionRegion) {
-    items.push({ type: 'regionStart', sample: selectionRegion.start });
-    items.push({ type: 'regionEnd', sample: selectionRegion.end });
+  mkr.list.forEach((m, i) => items.push({ type: 'marker', index: i, sample: m.sample }));
+  if (sel.region) {
+    items.push({ type: 'regionStart', sample: sel.region.start });
+    items.push({ type: 'regionEnd', sample: sel.region.end });
   }
   items.sort((a, b) => a.sample - b.sample);
   return items;
 }
 
 function findCurrentTabIndex(items) {
-  const t = activeNudgeTarget;
+  const t = nudge.target;
   return items.findIndex(item => {
     if (t.type !== item.type) return false;
     if (t.type === 'marker') return t.index === item.index;
@@ -935,33 +1214,30 @@ function findCurrentTabIndex(items) {
 
 // ─── Keyboard ────────────────────────────────────────────────────────────────
 document.addEventListener('keydown', (e) => {
-  if (!audioCtx) return;
+  if (!audio.ctx) return;
+  if (met.editing) return;
   if (e.target !== document.body && e.target.tagName !== 'CANVAS') return;
 
   switch (e.key) {
     case ' ':
       e.preventDefault();
-      if (isPlaying) {
-        stopPlayback();
-      } else {
-        startPlayback();
-      }
+      if (pb.playing) stopPlayback();
+      else startPlayback();
       break;
 
     case 'm':
     case 'M': {
       e.preventDefault();
-      const tolerance = 6 * samplesPerPeak;  // 6 display pixels
-      const existingIdx = markers.findIndex(mk => Math.abs(mk.sample - cursorSample) < tolerance);
+      const tolerance = 6 * view.samplesPerPeak;
+      const existingIdx = mkr.list.findIndex(mk => Math.abs(mk.sample - view.cursor) < tolerance);
       if (existingIdx !== -1) {
-        // Remove marker, reassign keys
-        markers.splice(existingIdx, 1);
-        markers.forEach((mk, i) => { mk.key = MARKER_KEYS[i]; });
+        mkr.list.splice(existingIdx, 1);
+        mkr.list.forEach((mk, i) => { mk.key = MARKER_KEYS[i]; });
       } else {
-        if (markers.length < MARKER_KEYS.length) {
-          markers.push({ sample: cursorSample, key: MARKER_KEYS[markers.length] });
-          markers.sort((a, b) => a.sample - b.sample);
-          markers.forEach((mk, i) => { mk.key = MARKER_KEYS[i]; });
+        if (mkr.list.length < MARKER_KEYS.length) {
+          mkr.list.push({ sample: view.cursor, key: MARKER_KEYS[mkr.list.length] });
+          mkr.list.sort((a, b) => a.sample - b.sample);
+          mkr.list.forEach((mk, i) => { mk.key = MARKER_KEYS[i]; });
         }
       }
       break;
@@ -970,63 +1246,61 @@ document.addEventListener('keydown', (e) => {
     case 'o':
     case 'O':
       e.preventDefault();
-      overdubEnabled = !overdubEnabled;
+      modes.overdub = !modes.overdub;
       break;
 
     case 'l':
     case 'L':
       e.preventDefault();
-      if (selectionRegion) {
-        loopEnabled = !loopEnabled;
-      }
+      if (sel.region) modes.loop = !modes.loop;
       break;
 
     case 'p':
     case 'P':
       e.preventDefault();
-      recordingPaused = !recordingPaused;
+      rec.paused = !rec.paused;
       break;
 
     case 'Escape':
       e.preventDefault();
-      isLive = true;
-      cursorSample = totalSamples;
-      activeNudgeTarget = { type: 'cursor' };
-      shiftTabAnchor = null;
+      view.isLive = true;
+      view.cursor = rec.totalSamples;
+      nudge.target = { type: 'cursor' };
+      nudge.shiftTabAnchor = null;
       break;
 
     case ',':
       e.preventDefault();
-      nudge(-Math.round(0.1 * sampleRate));
+      doNudge(-Math.round(0.1 * audio.sampleRate));
       break;
     case '.':
       e.preventDefault();
-      nudge(Math.round(0.1 * sampleRate));
+      doNudge(Math.round(0.1 * audio.sampleRate));
       break;
     case '<':
       e.preventDefault();
-      nudge(-Math.round(1.0 * sampleRate));
+      doNudge(-Math.round(1.0 * audio.sampleRate));
       break;
     case '>':
       e.preventDefault();
-      nudge(Math.round(1.0 * sampleRate));
+      doNudge(Math.round(1.0 * audio.sampleRate));
       break;
 
-    case '-':   // decrease by 10s
+    case '-':
       e.preventDefault();
-      setRowDuration(secondsPerRow - 10);
+      setRowDuration(view.secondsPerRow - 10);
       break;
-    case '=':   // increase by 10s
+    case '=':
       e.preventDefault();
-      setRowDuration(secondsPerRow + 10);
+      setRowDuration(view.secondsPerRow + 10);
       break;
-    case '_':   // Shift+minus: decrease by 60s
+    case '_':
       e.preventDefault();
-      setRowDuration(secondsPerRow - 60);
+      setRowDuration(view.secondsPerRow - 60);
       break;
-    case '+':   // Shift+equals: increase by 60s
+    case '+':
       e.preventDefault();
-      setRowDuration(secondsPerRow + 60);
+      setRowDuration(view.secondsPerRow + 60);
       break;
 
     case 'Tab': {
@@ -1037,48 +1311,77 @@ document.addEventListener('keydown', (e) => {
       const nextIdx = (curIdx + 1) % items.length;
       const item = items[nextIdx];
 
-      activeNudgeTarget = item.type === 'marker'
+      nudge.target = item.type === 'marker'
         ? { type: 'marker', index: item.index }
         : { type: item.type };
       ensureVisible(item.sample);
-      isLive = false;
+      view.isLive = false;
 
       if (e.shiftKey) {
-        if (shiftTabAnchor === null) {
+        if (nudge.shiftTabAnchor === null) {
           const prev = curIdx >= 0 ? items[curIdx] : null;
-          shiftTabAnchor = prev ? prev.sample : cursorSample;
+          nudge.shiftTabAnchor = prev ? prev.sample : view.cursor;
         }
-        const s = Math.min(shiftTabAnchor, item.sample);
-        const end = Math.max(shiftTabAnchor, item.sample);
-        if (end > s) selectionRegion = { start: s, end: end };
+        const s = Math.min(nudge.shiftTabAnchor, item.sample);
+        const end = Math.max(nudge.shiftTabAnchor, item.sample);
+        if (end > s) sel.region = { start: s, end: end };
       } else {
-        shiftTabAnchor = null;
+        nudge.shiftTabAnchor = null;
       }
       break;
     }
 
+    case 'g':
+    case 'G':
+      e.preventDefault();
+      met.on = !met.on;
+      if (met.on) startMetronome();
+      else stopMetronome();
+      break;
+
+    case 't':
+    case 'T':
+      e.preventDefault();
+      enterBpmEdit();
+      break;
+
+    case 'r':
+    case 'R':
+      e.preventDefault();
+      met.recEnabled = !met.recEnabled;
+      break;
+
+    case 'f':
+    case 'F':
+      e.preventDefault();
+      modes.monitor = !modes.monitor;
+      if (audio.monitorGain) {
+        audio.monitorGain.gain.value = modes.monitor ? 1 : 0;
+      }
+      break;
+
     default: {
       const pressedKey = e.key.toUpperCase();
-      const markerIdx = markers.findIndex(mk => mk.key === pressedKey);
+      const markerIdx = mkr.list.findIndex(mk => mk.key === pressedKey);
       if (markerIdx !== -1) {
-        cursorSample = markers[markerIdx].sample;
-        isLive = false;
-        activeNudgeTarget = { type: 'marker', index: markerIdx };
-        const { row } = sampleToRowCol(markers[markerIdx].sample);
-        if (row < viewTopRow || row >= viewTopRow + visibleRows) {
-          viewTopRow = Math.max(0, row - Math.floor(visibleRows / 2));
+        view.cursor = mkr.list[markerIdx].sample;
+        view.isLive = false;
+        nudge.target = { type: 'marker', index: markerIdx };
+        const { row } = sampleToRowCol(mkr.list[markerIdx].sample);
+        if (row < view.topRow || row >= view.topRow + view.visibleRows) {
+          view.topRow = Math.max(0, row - Math.floor(view.visibleRows / 2));
         }
       }
     }
   }
 });
 
-// ─── Hit test: is (x, y) over a marker flag? Returns index or -1 ──────────────
+// ─── Hit tests ───────────────────────────────────────────────────────────────
 function hitTestMarker(x, y) {
-  for (let i = 0; i < markers.length; i++) {
-    const { row, col } = sampleToRowCol(markers[i].sample);
-    if (row < viewTopRow || row >= viewTopRow + visibleRows) continue;
-    const yRow = (row - viewTopRow) * rowHeight;
+  for (let i = 0; i < mkr.list.length; i++) {
+    const { row, col } = sampleToRowCol(mkr.list[i].sample);
+    if (row < view.topRow || row >= view.topRow + view.visibleRows) continue;
+    const yRow = (row - view.topRow) * view.rowHeight;
     const flagX = col;
     const flagY = yRow + ROW_MARKER_ZONE - MARKER_FLAG_H;
     if (x >= flagX && x <= flagX + MARKER_FLAG_W && y >= flagY && y <= flagY + MARKER_FLAG_H) {
@@ -1088,51 +1391,50 @@ function hitTestMarker(x, y) {
   return -1;
 }
 
-// ─── Hit test: is (x, y) near a region boundary? Returns 'start', 'end', or null ──
 function hitTestRegionBoundary(x, y) {
-  if (!selectionRegion) return null;
-  const rowOfY = viewTopRow + Math.floor(y / rowHeight);
+  if (!sel.region) return null;
+  const rowOfY = view.topRow + Math.floor(y / view.rowHeight);
 
-  const { row: startRow, col: startCol } = sampleToRowCol(selectionRegion.start);
-  if (rowOfY === startRow && startRow >= viewTopRow && startRow < viewTopRow + visibleRows) {
+  const { row: startRow, col: startCol } = sampleToRowCol(sel.region.start);
+  if (rowOfY === startRow && startRow >= view.topRow && startRow < view.topRow + view.visibleRows) {
     if (Math.abs(x - startCol) <= 6) return 'start';
   }
 
-  const { row: endRow, col: endCol } = sampleToRowCol(selectionRegion.end);
-  if (rowOfY === endRow && endRow >= viewTopRow && endRow < viewTopRow + visibleRows) {
+  const { row: endRow, col: endCol } = sampleToRowCol(sel.region.end);
+  if (rowOfY === endRow && endRow >= view.topRow && endRow < view.topRow + view.visibleRows) {
     if (Math.abs(x - endCol) <= 6) return 'end';
   }
 
   return null;
 }
 
-// ─── Mouse handlers ───────────────────────────────────────────────────────────
+// ─── Mouse handlers ──────────────────────────────────────────────────────────
 canvas.addEventListener('mousedown', (e) => {
-  if (!audioCtx) return;
+  if (!audio.ctx) return;
   const rect = canvas.getBoundingClientRect();
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
   const sample = xyToSample(x, y);
 
-  mouseDownPos = { x, y, sample };
-  mouseDragActive = false;
+  sel.mouseDown = { x, y, sample };
+  sel.dragging = false;
 
   const mi = hitTestMarker(x, y);
   if (mi !== -1) {
-    mouseDownTarget = 'marker';
-    isDragging = true;
-    draggingMarkerIdx = mi;
+    sel.mouseTarget = 'marker';
+    mkr.isDragging = true;
+    mkr.draggingIdx = mi;
     return;
   }
 
   const boundary = hitTestRegionBoundary(x, y);
   if (boundary) {
-    mouseDownTarget = 'regionBoundary';
-    regionBoundaryDragSide = boundary;
+    sel.mouseTarget = 'regionBoundary';
+    sel.boundaryDragSide = boundary;
     return;
   }
 
-  mouseDownTarget = 'canvas';
+  sel.mouseTarget = 'canvas';
 });
 
 canvas.addEventListener('mousemove', (e) => {
@@ -1140,8 +1442,7 @@ canvas.addEventListener('mousemove', (e) => {
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
 
-  if (!mouseDownPos) {
-    // Hover: update cursor style
+  if (!sel.mouseDown) {
     if (hitTestMarker(x, y) !== -1) {
       canvas.style.cursor = 'grab';
     } else if (hitTestRegionBoundary(x, y)) {
@@ -1152,46 +1453,46 @@ canvas.addEventListener('mousemove', (e) => {
     return;
   }
 
-  if (mouseDownTarget === 'marker' && isDragging && draggingMarkerIdx >= 0) {
-    markers[draggingMarkerIdx].sample = xyToSample(x, y);
+  if (sel.mouseTarget === 'marker' && mkr.isDragging && mkr.draggingIdx >= 0) {
+    mkr.list[mkr.draggingIdx].sample = xyToSample(x, y);
     canvas.style.cursor = 'grabbing';
     return;
   }
 
-  if (mouseDownTarget === 'regionBoundary' && regionBoundaryDragSide) {
+  if (sel.mouseTarget === 'regionBoundary' && sel.boundaryDragSide) {
     const sample = xyToSample(x, y);
     canvas.style.cursor = 'col-resize';
-    if (regionBoundaryDragSide === 'start') {
-      if (sample < selectionRegion.end) {
-        selectionRegion.start = sample;
+    if (sel.boundaryDragSide === 'start') {
+      if (sample < sel.region.end) {
+        sel.region.start = sample;
       } else {
-        selectionRegion.start = selectionRegion.end;
-        selectionRegion.end = sample;
-        regionBoundaryDragSide = 'end';
+        sel.region.start = sel.region.end;
+        sel.region.end = sample;
+        sel.boundaryDragSide = 'end';
       }
     } else {
-      if (sample > selectionRegion.start) {
-        selectionRegion.end = sample;
+      if (sample > sel.region.start) {
+        sel.region.end = sample;
       } else {
-        selectionRegion.end = selectionRegion.start;
-        selectionRegion.start = sample;
-        regionBoundaryDragSide = 'start';
+        sel.region.end = sel.region.start;
+        sel.region.start = sample;
+        sel.boundaryDragSide = 'start';
       }
     }
     return;
   }
 
-  if (mouseDownTarget === 'canvas') {
-    const dx = x - mouseDownPos.x;
-    const dy = y - mouseDownPos.y;
-    if (!mouseDragActive && Math.sqrt(dx * dx + dy * dy) > 3) {
-      mouseDragActive = true;
+  if (sel.mouseTarget === 'canvas') {
+    const dx = x - sel.mouseDown.x;
+    const dy = y - sel.mouseDown.y;
+    if (!sel.dragging && Math.sqrt(dx * dx + dy * dy) > 3) {
+      sel.dragging = true;
     }
-    if (mouseDragActive) {
+    if (sel.dragging) {
       const currentSample = xyToSample(x, y);
-      const s = Math.min(mouseDownPos.sample, currentSample);
-      const endS = Math.max(mouseDownPos.sample, currentSample);
-      selectionRegion = { start: s, end: endS };
+      const s = Math.min(sel.mouseDown.sample, currentSample);
+      const endS = Math.max(sel.mouseDown.sample, currentSample);
+      sel.region = { start: s, end: endS };
       canvas.style.cursor = 'crosshair';
     }
   }
@@ -1202,60 +1503,69 @@ canvas.addEventListener('mouseup', (e) => {
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
 
-  if (mouseDownTarget === 'marker' && isDragging && draggingMarkerIdx >= 0) {
-    const marker = markers[draggingMarkerIdx];
-    markers.sort((a, b) => a.sample - b.sample);
-    markers.forEach((mk, i) => { mk.key = MARKER_KEYS[i]; });
-    const newIdx = markers.indexOf(marker);
-    activeNudgeTarget = { type: 'marker', index: newIdx };
-    draggingMarkerIdx = -1;
-    isDragging = false;
-  } else if (mouseDownTarget === 'regionBoundary') {
-    if (selectionRegion && selectionRegion.start >= selectionRegion.end) {
-      selectionRegion = null;
+  if (sel.mouseTarget === 'marker' && mkr.isDragging && mkr.draggingIdx >= 0) {
+    const marker = mkr.list[mkr.draggingIdx];
+    mkr.list.sort((a, b) => a.sample - b.sample);
+    mkr.list.forEach((mk, i) => { mk.key = MARKER_KEYS[i]; });
+    const newIdx = mkr.list.indexOf(marker);
+    nudge.target = { type: 'marker', index: newIdx };
+    mkr.draggingIdx = -1;
+    mkr.isDragging = false;
+  } else if (sel.mouseTarget === 'regionBoundary') {
+    if (sel.region && sel.region.start >= sel.region.end) {
+      sel.region = null;
     }
-    if (selectionRegion) {
-      activeNudgeTarget = { type: regionBoundaryDragSide === 'start' ? 'regionStart' : 'regionEnd' };
+    if (sel.region) {
+      nudge.target = { type: sel.boundaryDragSide === 'start' ? 'regionStart' : 'regionEnd' };
     }
-    regionBoundaryDragSide = null;
-  } else if (mouseDownTarget === 'canvas') {
-    if (!mouseDragActive) {
-      // Plain click: set cursor, clear region
-      if (mouseDownPos) {
-        cursorSample = mouseDownPos.sample;
-        isLive = false;
+    sel.boundaryDragSide = null;
+  } else if (sel.mouseTarget === 'canvas') {
+    if (!sel.dragging) {
+      if (sel.mouseDown) {
+        view.cursor = sel.mouseDown.sample;
+        view.isLive = false;
       }
-      selectionRegion = null;
-      loopEnabled = false;
-      activeNudgeTarget = { type: 'cursor' };
-      shiftTabAnchor = null;
+      sel.region = null;
+      modes.loop = false;
+      nudge.target = { type: 'cursor' };
+      nudge.shiftTabAnchor = null;
     } else {
-      // Drag completed: finalize region
-      if (selectionRegion && selectionRegion.start >= selectionRegion.end) {
-        selectionRegion = null;
-        activeNudgeTarget = { type: 'cursor' };
+      if (sel.region && sel.region.start >= sel.region.end) {
+        sel.region = null;
+        nudge.target = { type: 'cursor' };
       } else {
-        activeNudgeTarget = { type: 'regionEnd' };
+        nudge.target = { type: 'regionEnd' };
       }
     }
   }
 
-  mouseDownPos = null;
-  mouseDownTarget = null;
-  mouseDragActive = false;
+  sel.mouseDown = null;
+  sel.mouseTarget = null;
+  sel.dragging = false;
 });
 
-// Vertical scroll to pan rows
 canvas.addEventListener('wheel', (e) => {
-  if (!audioCtx) return;
+  if (!audio.ctx) return;
   e.preventDefault();
 
-  // Scroll by rows: deltaY > 0 = scroll down (see later rows)
   const rowDelta = e.deltaY > 0 ? 1 : -1;
-  const maxTopRow = Math.max(0, Math.ceil(totalSamples / samplesPerRow) - visibleRows + MIN_BLANK_ROWS_BELOW);
-  viewTopRow = Math.max(0, Math.min(maxTopRow, viewTopRow + rowDelta));
-  isLive = false;
+  const maxTopRow = Math.max(0, Math.ceil(rec.totalSamples / view.samplesPerRow) - view.visibleRows + MIN_BLANK_ROWS_BELOW);
+  view.topRow = Math.max(0, Math.min(maxTopRow, view.topRow + rowDelta));
+  view.isLive = false;
 }, { passive: false });
+
+// ─── Input event listeners ───────────────────────────────────────────────────
+document.getElementById('input-device').addEventListener('keydown', (e) => { e.stopPropagation(); });
+document.getElementById('output-device').addEventListener('keydown', (e) => { e.stopPropagation(); });
+
+document.getElementById('bpm-input').addEventListener('keydown', (e) => {
+  e.stopPropagation();
+  if (e.key === 'Enter') { e.preventDefault(); exitBpmEdit(true); }
+  if (e.key === 'Escape') { e.preventDefault(); exitBpmEdit(false); }
+});
+document.getElementById('bpm-input').addEventListener('blur', () => {
+  if (met.editing) exitBpmEdit(false);
+});
 
 // Focus body so keyboard events work
 document.body.setAttribute('tabindex', '0');
